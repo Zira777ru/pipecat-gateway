@@ -3,7 +3,7 @@ import time
 import sys
 
 def poll_deployment():
-    deploy_uuid = "bgkw08w4880g4o80wgk4c4sk"
+    deploy_uuid = "z8c80ck80c4s4k4o88kwkk4c"
     token = "3|claude-api-token-igor-2026"
     url = f"http://localhost:8000/api/v1/deployments/{deploy_uuid}"
     

@@ -1,6 +1,5 @@
-pipecat-ai[google]
+pipecat-ai[google,websocket]
 fastapi
 uvicorn
-daily-python
 python-dotenv
 aiohttp
