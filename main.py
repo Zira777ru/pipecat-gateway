@@ -13,7 +13,7 @@ from pipecat.services.google.tts import GoogleTTSService
 from pipecat.pipeline.pipeline import Pipeline
 from pipecat.pipeline.runner import PipelineRunner
 from pipecat.pipeline.task import PipelineTask
-from pipecat.processors.aggregators.openai_llm_context import OpenAILLMContext
+# from pipecat.processors.aggregators.llm_context import LLMContext
 from pipecat.vad.silero import SileroVADAnalyzer
 
 load_dotenv()
