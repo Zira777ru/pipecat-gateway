@@ -7,7 +7,6 @@ from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 
-from pipecat.transports.services.daily import DailyTransport, DailyParams
 from pipecat.transports.services.fastapi_websocket import FastAPIWebsocketTransport, FastAPIWebsocketParams
 from pipecat.services.google import GoogleLLMService, GoogleTTSService
 from pipecat.pipeline.pipeline import Pipeline
@@ -29,42 +28,11 @@ app.add_middleware(
 )
 
 # --- Configuration ---
-DAILY_API_KEY = os.getenv("DAILY_API_KEY")
-DAILY_API_URL = os.getenv("DAILY_API_URL", "https://api.daily.co/v1")
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 
 @app.get("/health")
 async def health_check():
     return {"status": "healthy"}
-
-# --- Daily WebRTC Logic ---
-
-async def create_daily_room():
-    headers = {
-        "Authorization": f"Bearer {DAILY_API_KEY}",
-        "Content-Type": "application/json"
-    }
-    async with aiohttp.ClientSession() as session:
-        async with session.post(f"{DAILY_API_URL}/rooms", headers=headers, json={
-            "properties": {
-                "exp": int(asyncio.get_event_loop().time()) + 3600, # 1 hour
-                "enable_chat": True
-            }
-        }) as resp:
-            if resp.status != 200:
-                text = await resp.text()
-                raise HTTPException(status_code=resp.status, detail=f"Failed to create room: {text}")
-            return await resp.json()
-
-@app.post("/daily/room")
-async def join_daily_room():
-    if not DAILY_API_KEY:
-        raise HTTPException(status_code=500, detail="DAILY_API_KEY not configured")
-    
-    room = await create_daily_room()
-    # Here we would normally start a background process/task to run the bot in this room
-    # For now, we just return the room info. In a real scenario, you'd trigger a bot runner.
-    return room
 
 # --- Pipecat Bot Runner ---
 
@@ -78,10 +46,6 @@ async def run_bot(transport, llm_service, tts_service):
 
     task = PipelineTask(pipeline)
     
-    @transport.event_handler("on_participant_joined")
-    async def on_participant_joined(transport, participant):
-        await task.queue_frames([llm_service.user_joined_frame(participant)])
-
     runner = PipelineRunner()
     await runner.run(task)
 
@@ -99,7 +63,7 @@ async def websocket_endpoint(websocket: WebSocket):
     )
     
     llm = GoogleLLMService(api_key=GOOGLE_API_KEY, model="gemini-1.5-flash")
-    tts = GoogleTTSService(api_key=GOOGLE_API_KEY) # Google uses same key or ADC
+    tts = GoogleTTSService(api_key=GOOGLE_API_KEY)
     
     await run_bot(transport, llm, tts)
 
