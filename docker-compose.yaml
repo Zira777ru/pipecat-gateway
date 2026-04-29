@@ -4,8 +4,8 @@ services:
     container_name: pipecat-gateway
     environment:
       - GOOGLE_API_KEY=${GOOGLE_API_KEY}
-    ports:
-      - "8000:8000"
+    # ports:
+    #  - "8000:8000"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
