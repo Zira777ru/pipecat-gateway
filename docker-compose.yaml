@@ -2,6 +2,9 @@ services:
   pipecat-gateway:
     build: .
     container_name: pipecat-gateway
+    networks:
+      - coolify
+      - default
     environment:
       # Провайдеры (google/openai/anthropic для LLM; deepgram/openai для STT; elevenlabs/openai/google для TTS)
       - LLM_PROVIDER=${LLM_PROVIDER:-google}
@@ -27,6 +30,19 @@ services:
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4o-mini}
 
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=coolify
+      - traefik.http.routers.pipecat-http.entrypoints=http
+      - traefik.http.routers.pipecat-http.rule=Host(`voice.coscore.us`)
+      - traefik.http.routers.pipecat-http.service=pipecat
+      - traefik.http.routers.pipecat-https.entrypoints=https
+      - traefik.http.routers.pipecat-https.rule=Host(`voice.coscore.us`)
+      - traefik.http.routers.pipecat-https.service=pipecat
+      - traefik.http.routers.pipecat-https.tls=true
+      - traefik.http.routers.pipecat-https.tls.certresolver=letsencrypt
+      - traefik.http.services.pipecat.loadbalancer.server.port=8000
+
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
@@ -34,3 +50,9 @@ services:
       retries: 3
       start_period: 15s
     restart: always
+
+networks:
+  coolify:
+    external: true
+  default:
+    name: pipecat-gateway-net
