@@ -110,17 +110,34 @@ async def _llm_rest(text: str, system_prompt: str) -> str:
 
 
 async def _tts_rest(text: str) -> bytes:
-    """Синтез речи через ElevenLabs REST API. Возвращает MP3."""
-    if not ELEVENLABS_API_KEY:
-        raise HTTPException(503, detail="ELEVENLABS_API_KEY не задан")
-    async with httpx.AsyncClient(timeout=30.0) as client:
-        resp = await client.post(
-            f"https://api.elevenlabs.io/v1/text-to-speech/{ELEVENLABS_VOICE_ID}",
-            headers={"xi-api-key": ELEVENLABS_API_KEY, "Content-Type": "application/json"},
-            json={"text": text, "model_id": "eleven_turbo_v2_5", "output_format": "mp3_22050_32"},
-        )
-        resp.raise_for_status()
-    return resp.content
+    """Синтез речи. Пробует ElevenLabs (если ключ есть), иначе gTTS (бесплатный)."""
+    if ELEVENLABS_API_KEY:
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                resp = await client.post(
+                    f"https://api.elevenlabs.io/v1/text-to-speech/{ELEVENLABS_VOICE_ID}",
+                    headers={"xi-api-key": ELEVENLABS_API_KEY, "Content-Type": "application/json"},
+                    json={"text": text, "model_id": "eleven_turbo_v2_5", "output_format": "mp3_22050_32"},
+                )
+                if resp.status_code == 200:
+                    return resp.content
+                logger.warning(f"ElevenLabs HTTP {resp.status_code}, falling back to gTTS")
+        except Exception as e:
+            logger.warning(f"ElevenLabs failed: {e}, falling back to gTTS")
+
+    # Free fallback: Google Translate TTS via gTTS
+    import io, asyncio
+    from gtts import gTTS
+    lang = LANGUAGE[:2] if LANGUAGE else "ru"
+
+    def _sync():
+        tts = gTTS(text=text, lang=lang)
+        buf = io.BytesIO()
+        tts.write_to_fp(buf)
+        buf.seek(0)
+        return buf.read()
+
+    return await asyncio.get_event_loop().run_in_executor(None, _sync)
 
 
 # ─── FastAPI app ────────────────────────────────────────────────────────────
