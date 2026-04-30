@@ -77,19 +77,40 @@ from fastapi import HTTPException
 
 
 async def _stt_rest(audio_bytes: bytes, content_type: str) -> str:
-    """Расшифровка аудио через Deepgram REST API."""
-    if not DEEPGRAM_API_KEY:
-        raise HTTPException(503, detail="DEEPGRAM_API_KEY не задан")
-    ct = content_type or "audio/ogg"
-    async with httpx.AsyncClient(timeout=30.0) as client:
+    """Расшифровка аудио. Пробует Deepgram (если ключ есть), иначе Gemini multimodal."""
+    if DEEPGRAM_API_KEY:
+        ct = content_type or "audio/ogg"
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            resp = await client.post(
+                f"https://api.deepgram.com/v1/listen?model=nova-3&smart_format=true&language={LANGUAGE}",
+                headers={"Authorization": f"Token {DEEPGRAM_API_KEY}", "Content-Type": ct},
+                content=audio_bytes,
+            )
+            resp.raise_for_status()
+        alts = resp.json()["results"]["channels"][0]["alternatives"]
+        return alts[0]["transcript"] if alts else ""
+
+    # Fallback: Gemini multimodal transcription
+    if not GOOGLE_API_KEY:
+        raise HTTPException(503, detail="Нужен DEEPGRAM_API_KEY или GOOGLE_API_KEY для STT")
+    import base64
+    audio_b64 = base64.b64encode(audio_bytes).decode()
+    mime = content_type or "audio/ogg"
+    async with httpx.AsyncClient(timeout=60.0) as client:
         resp = await client.post(
-            f"https://api.deepgram.com/v1/listen?model=nova-3&smart_format=true&language={LANGUAGE}",
-            headers={"Authorization": f"Token {DEEPGRAM_API_KEY}", "Content-Type": ct},
-            content=audio_bytes,
+            f"https://generativelanguage.googleapis.com/v1beta/models/{GOOGLE_MODEL}:generateContent?key={GOOGLE_API_KEY}",
+            json={
+                "contents": [{
+                    "parts": [
+                        {"inlineData": {"mimeType": mime, "data": audio_b64}},
+                        {"text": "Transcribe this audio precisely. Return only the transcribed text, no other commentary."},
+                    ]
+                }],
+                "generationConfig": {"maxOutputTokens": 500},
+            },
         )
         resp.raise_for_status()
-    alts = resp.json()["results"]["channels"][0]["alternatives"]
-    return alts[0]["transcript"] if alts else ""
+    return resp.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
 
 
 async def _llm_rest(text: str, system_prompt: str) -> str:
