@@ -1,5 +1,12 @@
-pipecat-ai[google,websocket]
+# Core Pipecat с нужными провайдерами
+# Добавь/убери экстры по необходимости
+pipecat-ai[google,deepgram,elevenlabs,openai,websocket,silero]
+
+# Web-фреймворк
 fastapi
-uvicorn
+uvicorn[standard]
+
+# Утилиты
 python-dotenv
-aiohttp
+httpx
+loguru

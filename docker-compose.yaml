@@ -3,13 +3,34 @@ services:
     build: .
     container_name: pipecat-gateway
     environment:
+      # Провайдеры (google/openai/anthropic для LLM; deepgram/openai для STT; elevenlabs/openai/google для TTS)
+      - LLM_PROVIDER=${LLM_PROVIDER:-google}
+      - STT_PROVIDER=${STT_PROVIDER:-deepgram}
+      - TTS_PROVIDER=${TTS_PROVIDER:-elevenlabs}
+
+      # Системный промпт и язык STT
+      - SYSTEM_PROMPT=${SYSTEM_PROMPT:-Ты голосовой AI-ассистент. Отвечай кратко и по делу.}
+      - LANGUAGE=${LANGUAGE:-ru}
+
+      # Google / Gemini
       - GOOGLE_API_KEY=${GOOGLE_API_KEY}
-    # ports:
-    #  - "8000:8000"
+      - GOOGLE_MODEL=${GOOGLE_MODEL:-gemini-2.5-flash}
+
+      # Deepgram STT
+      - DEEPGRAM_API_KEY=${DEEPGRAM_API_KEY:-}
+
+      # ElevenLabs TTS
+      - ELEVENLABS_API_KEY=${ELEVENLABS_API_KEY:-}
+      - ELEVENLABS_VOICE_ID=${ELEVENLABS_VOICE_ID:-21m00Tcm4TlvDq8ikWAM}
+
+      # OpenAI (опционально)
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4o-mini}
+
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 10s
+      start_period: 15s
     restart: always
