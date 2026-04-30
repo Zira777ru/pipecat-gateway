@@ -223,12 +223,13 @@ async def voice_rest(
     logger.info(f"[REST] LLM: {response_text!r}")
 
     audio_out = await _tts_rest(response_text)
+    from urllib.parse import quote
     return Response(
         content=audio_out,
         media_type="audio/mpeg",
         headers={
-            "X-Transcript": transcript,
-            "X-Response": response_text,
+            "X-Transcript": quote(transcript),
+            "X-Response": quote(response_text),
         },
     )
 
